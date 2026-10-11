@@ -34,8 +34,8 @@ dl{margin:12px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font
 <script>
 const S = JSON.parse(document.getElementById('data').textContent);
 const APP = document.getElementById('app');
-const BANKS = {"970436":"Vietcombank","970415":"VietinBank","970418":"BIDV","970405":"Agribank","970407":"Techcombank","970422":"MB Bank","970416":"ACB","970432":"VPBank","970423":"TPBank","970403":"Sacombank","970441":"VIB","970443":"SHB","970437":"HDBank","970448":"OCB","970426":"MSB"};
-
+//const BANKS = {"970436":"Vietcombank","970415":"VietinBank","970418":"BIDV","970405":"Agribank","970407":"Techcombank","970422":"MB Bank","970416":"ACB","970432":"VPBank","970423":"TPBank","970403":"Sacombank","970441":"VIB","970443":"SHB","970437":"HDBank","970448":"OCB","970426":"MSB"};
+const BANKS = {"970436":"Vietcombank"};
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/\s+/g,' ').trim();
 const money = n => Number(n||0).toLocaleString('vi-VN')+' ₫';
