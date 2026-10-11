@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thu học phí</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--tx:#17202e;--mu:#6b7686;--bd:#e1e6ef;--pr:#2563eb;--ok:#15803d;--okbg:#e7f6ec;--er:#b91c1c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1420;--card:#19202e;--tx:#e8edf6;--mu:#93a0b4;--bd:#2a3347;--pr:#5b8cff;--ok:#4ade80;--okbg:#12301f;--er:#f87171}}
+:root[data-theme="dark"]{--bg:#0f1420;--card:#19202e;--tx:#e8edf6;--mu:#93a0b4;--bd:#2a3347;--pr:#5b8cff;--ok:#4ade80;--okbg:#12301f;--er:#f87171}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:8px 0 2px}.sub{color:var(--mu);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:14px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:80px}
+button{font:inherit;border:0;border-radius:10px;padding:12px 16px;background:var(--pr);color:#fff;font-weight:600;cursor:pointer}
+button.g{background:transparent;color:var(--pr);border:1px solid var(--bd)}button.d{background:transparent;color:var(--er);padding:4px 8px}
+.row{display:flex;gap:8px;margin-top:10px}.row>*{flex:1}.row>button{flex:0 0 auto}
+.ok{background:var(--okbg);color:var(--ok);text-align:center;padding:26px 16px;border-radius:16px}
+.ok b{display:block;font-size:24px}.big{font-size:44px;line-height:1}
+.qr{display:flex;justify-content:center;margin:14px 0}.qr div{background:#fff;padding:12px;border-radius:12px}
+.amt{font-size:28px;font-weight:700;text-align:center}.mu{color:var(--mu);font-size:14px}
+dl{margin:12px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}dt{color:var(--mu)}dd{margin:0;text-align:right;font-weight:600;word-break:break-word}
+.er{color:var(--er)}.pick{display:block;width:100%;text-align:left;margin-top:8px;background:var(--bg);color:var(--tx);border:1px solid var(--bd)}
+.tb{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:left}
+label{font-size:13px;color:var(--mu);display:block;margin:10px 0 4px}
+.bar{position:sticky;bottom:0;background:var(--bg);padding:10px 0;display:flex;gap:8px}.bar button{flex:1}
+.top{display:flex;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="w"><div class="top"><button class="g" id="adm" hidden="">⚙ Quản lý</button></div><div id="app"></div></div>
+<script type="application/json" id="data">{"settings":{"bin":"970422","acct":"0778846018","name":"TRUONG BA THAO","amount":0,"note":"Học phí"},"students":[{"name":"Doan Gia Hy","cls":"hsg","amount":500000,"paid":false},{"name":"Dinh Nho Quoc Hung","cls":"hsg","amount":500000,"paid":false},{"name":"Nguyen Hoang Gia Phat","cls":"hsg-1","amount":1500000,"paid":false},{"name":"Bui Ngoc Minh Chau","cls":"ct-hsg","amount":750000,"paid":false},{"name":"Le Hoang Bao Hy","cls":"ct-hsg","amount":500000,"paid":true},{"name":"Nguyen Xuan Khoi","cls":"hsg","amount":500000,"paid":false}]}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const S=JSON.parse(document.getElementById('data').textContent);
+const APP=document.getElementById('app');
+const BANKS={"970436":"Vietcombank","970415":"VietinBank","970418":"BIDV","970405":"Agribank","970407":"Techcombank","970422":"MB Bank","970416":"ACB","970432":"VPBank","970423":"TPBank","970403":"Sacombank","970441":"VIB","970443":"SHB","970437":"HDBank","970448":"OCB","970426":"MSB"};
+let mode='lookup',canEdit=false,artifact=null,dirty=false;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/\s+/g,' ').trim();
+const money=n=>Number(n||0).toLocaleString('vi-VN')+' ₫';
+const amountOf=s=>Number(s.amount)||Number(S.settings.amount)||0;
+function crc(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=c&0x8000?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
+const tlv=(i,v)=>i+String(v.length).padStart(2,'0')+v;
+function vietqr(bin,acct,amount,memo){
+  const mi=tlv('00','A000000727')+tlv('01',tlv('00',bin)+tlv('01',acct))+tlv('02','QRIBFTTA');
+  let p=tlv('00','01')+tlv('01','12')+tlv('38',mi)+tlv('53','704')+(amount>0?tlv('54',String(amount)):'')+tlv('58','VN')+tlv('62',tlv('08',memo))+'6304';
+  return p+crc(p);
+}
+function lookupView(){
+  APP.innerHTML=`<h1>🎓 Đóng học phí</h1><p class="sub">Nhập họ tên học sinh để kiểm tra hoặc lấy mã QR thanh toán.</p>
+  <div class="card"><input id="q" placeholder="Ví dụ: Nguyễn Văn An" autocomplete="off"><div class="row"><button id="go" style="width:100%">Kiểm tra</button></div></div><div id="res"></div>`;
+  const q=document.getElementById('q');
+  const run=()=>search(q.value);
+  document.getElementById('go').onclick=run;q.onkeydown=e=>{if(e.key==='Enter')run()};
+}
+function search(v){
+  const res=document.getElementById('res'),n=norm(v);
+  if(!n){res.innerHTML='';return}
+  let m=S.students.filter(s=>norm(s.name)===n);
+  if(!m.length)m=S.students.filter(s=>norm(s.name).includes(n));
+  if(!m.length){res.innerHTML='<div class="card er">Không tìm thấy học sinh này. Hãy kiểm tra lại họ tên.</div>';return}
+  if(m.length>1){res.innerHTML='<div class="card"><b>Có nhiều kết quả, chọn đúng học sinh:</b>'+m.map(s=>`<button class="pick" data-i="${S.students.indexOf(s)}">${esc(s.name)}${s.cls?' · Lớp '+esc(s.cls):''}</button>`).join('')+'</div>';
+    res.querySelectorAll('.pick').forEach(b=>b.onclick=()=>show(S.students[b.dataset.i]));return}
+  show(m[0]);
+}
+function show(s){
+  const res=document.getElementById('res');
+  const who=`<div class="mu" style="text-align:center">${s.cls?'Lớp '+esc(s.cls):''}</div>`;
+  if(s.paid){res.innerHTML=`<div class="ok"><div class="big">✅</div><b>Đã đóng tiền</b><div style="margin-top:6px">${esc(s.name)}${s.cls?' · Lớp '+esc(s.cls):''}</div></div>`;return}
+  const st=S.settings,amt=amountOf(s);
+  if(!st.acct){res.innerHTML='<div class="card er">Nhà trường chưa cài đặt tài khoản nhận tiền. Vui lòng liên hệ giáo viên.</div>';return}
+  const memo=(norm(st.note)+' '+norm(s.name)).toUpperCase().slice(0,50);
+  res.innerHTML=`<div class="card"><div style="text-align:center;font-weight:700;font-size:18px">${esc(s.name)}</div>${who}
+  <div class="mu" style="text-align:center;margin-top:8px">⏳ Chưa đóng tiền — quét mã để thanh toán</div>
+  ${amt?`<div class="amt" style="margin-top:8px">${money(amt)}</div>`:''}<div class="qr"><div id="qr"></div></div>
+  <dl><dt>Ngân hàng</dt><dd>${esc(BANKS[st.bin]||st.bin)}</dd><dt>Số tài khoản</dt><dd>${esc(st.acct)}</dd><dt>Chủ tài khoản</dt><dd>${esc(st.name)}</dd><dt>Nội dung</dt><dd>${esc(memo)}</dd></dl>
+  <p class="mu" style="text-align:center;margin-bottom:0">Sau khi chuyển khoản, giáo viên sẽ xác nhận và trạng thái sẽ đổi thành “Đã đóng tiền”.</p></div>`;
+  try{new QRCode(document.getElementById('qr'),{text:vietqr(st.bin,st.acct,amt,memo),width:230,height:230,correctLevel:QRCode.CorrectLevel.M})}
+  catch(e){document.getElementById('qr').textContent='Không tạo được mã QR'}
+}
+function adminView(){
+  const st=S.settings,paid=S.students.filter(s=>s.paid).length;
+  APP.innerHTML=`<h1>⚙ Quản lý học phí</h1><p class="sub">Đã đóng ${paid}/${S.students.length} học sinh</p>
+  <div class="card"><b>Tài khoản nhận tiền</b>
+  <label>Ngân hàng</label><select data-s="bin">${Object.entries(BANKS).map(([k,v])=>`<option value="${k}"${k===st.bin?' selected':''}>${v}</option>`).join('')}</select>
+  <label>Số tài khoản</label><input data-s="acct" inputmode="numeric" value="${esc(st.acct)}">
+  <label>Tên chủ tài khoản</label><input data-s="name" value="${esc(st.name)}">
+  <label>Học phí mặc định (VNĐ)</label><input data-s="amount" inputmode="numeric" value="${st.amount||''}">
+  <label>Nội dung chuyển khoản (đứng trước họ tên)</label><input data-s="note" value="${esc(st.note)}"></div>
+  <div class="card"><b>Thêm học sinh</b><label>Mỗi dòng: Họ tên, Lớp, Số tiền (lớp và số tiền có thể bỏ trống)</label>
+  <textarea id="bulk" placeholder="Nguyễn Văn An, 6A1, 1500000&#10;Trần Thị Bình, 6A2"></textarea><div class="row"><button id="addb" style="width:100%">Thêm vào danh sách</button></div></div>
+  <div class="card"><b>Danh sách</b><div class="tb"><table><tr><th>Đã đóng</th><th>Họ tên</th><th>Lớp</th><th>Tiền</th><th></th></tr>
+  ${S.students.map((s,i)=>`<tr><td><input type="checkbox" data-p="${i}" ${s.paid?'checked':''} style="width:20px;height:20px"></td><td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td>${s.amount?money(s.amount):'—'}</td><td><button class="d" data-x="${i}">Xóa</button></td></tr>`).join('')||'<tr><td colspan="5" class="mu">Chưa có học sinh.</td></tr>'}</table></div></div>
+  <div class="bar"><button class="g" id="back">← Xem như học sinh</button><button id="save">Lưu & xuất bản</button></div><p class="mu" id="msg"></p>`;
+  APP.querySelectorAll('[data-s]').forEach(el=>el.oninput=()=>{const k=el.dataset.s;st[k]=k==='amount'?Number(el.value.replace(/\D/g,''))||0:el.value.trim();dirty=true});
+  APP.querySelectorAll('[data-p]').forEach(el=>el.onchange=()=>{S.students[el.dataset.p].paid=el.checked;dirty=true;adminView()});
+  APP.querySelectorAll('[data-x]').forEach(el=>el.onclick=()=>{S.students.splice(el.dataset.x,1);dirty=true;adminView()});
+  document.getElementById('addb').onclick=()=>{
+    const lines=document.getElementById('bulk').value.split('\n').map(l=>l.trim()).filter(Boolean);
+    lines.forEach(l=>{const [name,cls,amt]=l.split(/[,;\t]/).map(x=>x.trim());if(name)S.students.push({name,cls:cls||'',amount:Number((amt||'').replace(/\D/g,''))||0,paid:false})});
+    if(lines.length){dirty=true;adminView()}};
+  document.getElementById('back').onclick=()=>{mode='lookup';render()};
+  document.getElementById('save').onclick=save;
+}
+function serialize(){
+  const c=document.documentElement.cloneNode(true);
+  c.querySelector('#app').innerHTML='';
+  c.querySelector('#data').textContent=JSON.stringify(S).replace(/</g,'\\u003c');
+  c.querySelector('#adm').setAttribute('hidden','');
+  return '<!DOCTYPE html>\n'+c.outerHTML;
+}
+async function save(){
+  const msg=document.getElementById('msg');
+  if(!artifact){msg.textContent='Không có quyền lưu trên trang này.';return}
+  msg.textContent='Đang lưu…';
+  try{await artifact.publish(serialize());dirty=false}
+  catch(e){msg.textContent='Lưu thất bại'+(e&&e.code?' ('+e.code+')':'')+'. Hãy thử lại.'}
+}
+function render(){mode==='admin'?adminView():lookupView()}
+document.getElementById('adm').onclick=()=>{mode='admin';render()};
+render();
+(async()=>{
+  try{
+    const u=await claude.use('user');
+    canEdit=!!(u&&(u.canEdit()||u.isOwner()));
+    if(canEdit){artifact=await claude.use('artifact');document.getElementById('adm').hidden=false;
+      if(!S.settings.acct&&!S.students.length){mode='admin';render()}}
+  }catch(e){}
+})();
+</script>
+
+
+</body></html>
